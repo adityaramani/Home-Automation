@@ -8,6 +8,7 @@ int GasInput = A4;
 int a[5] = {0,0,0,0,0};
 int prev[5] = {0,0,0,0,0};
 
+
 int LightHallEnable = 3;
 int LightBedroomEnable = 4;
 int LightBathroomEnable = 7;
@@ -18,10 +19,37 @@ int FanBedroom = 6;
 int Flagservo =1 ;
 int FlagLightHall = 1;
 
+
+void doors_open()
+{
+   for (pos = 0; pos <= 180; pos += 1) {
+                myservoLeft.write(pos);
+                 myservoRight.write(180 - pos); 
+                delay(15);
+       }
+    delay(1000);
+  
+}
+
+void doors_close()
+{
+
+      for (pos = 180; pos >= 0; pos -= 1) {
+                myservoLeft.write(pos);
+                myservoRight.write(180 - pos);                 
+                delay(15);
+      }
+  delay(1000);
+
+
+}
+
+
+
 void setup() {
   myservoLeft.attach(9);
   myservoRight.attach(10);
-  pinMode(DoorInput , INPUT_PULLUP);
+  pinMode(DoorInput , INPUT);
   pinMode(ldrInput , INPUT);
   pinMode(TempInput , INPUT);
   pinMode(GasInput , INPUT);
@@ -36,11 +64,11 @@ int i;
 void loop() {
 
   
+   for(i= 0; i < 5; i++)
+       prev[i] = a[i];
+  
     if( Serial.available() > 5){
-       for( i = 0 ; i < 5; i++){
-         prev[i] = a[i];
-       }  
-      
+       
       for( i = 0 ; i < 5; i++){
             a[i] = Serial.read() - '0';
             
@@ -48,57 +76,46 @@ void loop() {
       }
     
    Flagservo = a[0];  
-  }
+  
+}
     
  else
 {
   
   
   a[0] = digitalRead(DoorInput);
- //  Flagservo  =a[0];
-     //
-  // a[1] = 1;
+  Flagservo  =a[0];
+  //a[1] is value of IR sensor in room
+  a[1] =  a[0];
 
   int val = analogRead(ldrInput);
   if( map(val , 0 , 1023, 0 ,255) > 100)
-      a[2] = 1;
+      a[2] = 1; //set high cause the surroudning is dark
   else
-      a[2] = 0; 
+      a[2] = 0;
   
   val = analogRead(TempInput);
+  
   float mv = ( val/1024.0)*5000; 
   float cel = mv/10;
-  Serial.println(cel);
-  if(cel > 27.0 )
-    a[3] = 1;
+  
+  if(cel > 27.0 ) // if temp is > 27 set a[3] as high , so as to turn on fans
+    a[3] = 1;    
   else
     a[3] = 0;
 
    a[4] = digitalRead(GasInput);
 }
    
- if(Flagservo == 1)
- {
-       for (pos = 0; pos <= 180; pos += 1) {
-                myservoLeft.write(pos);
-                 myservoRight.write(180 - pos); 
-                delay(15);
-       }
+ if(Flagservo == !prev[0] )
+ {      
+       doors_open();
        delay(1000);
-       Flagservo = 2;
-}
-if(Flagservo == 2)
-{
-  for (pos = 180; pos >= 0; pos -= 1) {
-                myservoLeft.write(pos);
-                myservoRight.write(180 - pos);                 
-                delay(15);
-       }
-       delay(1000);
-       Flagservo = 0;
+       doors_close();
+       Flagservo = 0 ;
 }
 
-if(FlagLightHall && a[2])
+if(a[2]) 
 {
   digitalWrite(LightHallEnable , HIGH);
  }
@@ -107,7 +124,7 @@ else
   digitalWrite(LightHallEnable , LOW);
 }
 
-if(FlagLightHall && a[3])
+if(a[3])
 {
   digitalWrite(FanHall , HIGH);
  }
@@ -116,19 +133,21 @@ else
   digitalWrite(FanHall , LOW);
 }
 
-if(a[1] == 1)
+if(a[1])
 {
   if( a[2] )
     digitalWrite(LightBedroomEnable , HIGH);
   if( a[3] )
     digitalWrite(FanBedroom , HIGH);
 }
+
 else
 {
   digitalWrite(FanBedroom , LOW);
   digitalWrite(LightBedroomEnable ,LOW);
 }
-int i;
+
+
 for(i = 0 ;i < 5 ;i++){
       Serial.println(a[i]);
       delay(250);
